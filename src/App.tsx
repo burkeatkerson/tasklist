@@ -113,25 +113,8 @@ export default function App() {
   };
 
   return (
-    <div
-      style={{
-        minHeight: '100dvh',
-        background: T.bg,
-        display: 'flex',
-        justifyContent: 'center',
-      }}
-    >
-      <div
-        style={{
-          width: '100%',
-          maxWidth: 480,
-          minHeight: '100dvh',
-          position: 'relative',
-          paddingTop: 'env(safe-area-inset-top, 0px)',
-          borderLeft: '1px solid ' + T.lineSoft,
-          borderRight: '1px solid ' + T.lineSoft,
-        }}
-      >
+    <div className="app-bg">
+      <div className="app-frame">
         {loading ? (
           <Centered>Loading…</Centered>
         ) : error && store.projects.length === 0 && store.tasks.length === 0 ? (
