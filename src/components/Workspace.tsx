@@ -19,6 +19,7 @@ export function Workspace({
   onOpen,
   onToggle,
   onFlag,
+  onDelete,
   onDragStart,
   dragOverId,
   draggingId,
@@ -29,6 +30,7 @@ export function Workspace({
   onOpen: (id: string) => void;
   onToggle: (id: string) => void;
   onFlag: (id: string) => void;
+  onDelete: (id: string) => void;
   onDragStart: (e: PointerEvent, task: Task) => void;
   dragOverId: string | null;
   draggingId: string | null;
@@ -222,6 +224,7 @@ export function Workspace({
           task={t}
           onToggle={onToggle}
           onFlag={onFlag}
+          onDelete={onDelete}
           onDragStart={onDragStart}
           isDragging={draggingId === t.id}
           last={i === loose.length - 1}

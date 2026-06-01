@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { T } from '../theme';
 
 export function Check({
@@ -92,6 +93,69 @@ export function Flag({
       }}
     >
       <FlagGlyph on={on} size={size} />
+    </button>
+  );
+}
+
+export function TrashGlyph({ size = 14 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M2.5 4h11M6 4V2.6h4V4M5 4l.6 9.4h4.8L11 4" />
+      <path d="M6.6 6.6v4.6M9.4 6.6v4.6" />
+    </svg>
+  );
+}
+
+// Two-tap destructive button: first tap arms ("Delete?"), second confirms.
+// Auto-disarms after 3s so a stray tap never deletes.
+export function DangerConfirm({
+  label = 'Delete',
+  armedLabel = 'Confirm delete',
+  onConfirm,
+}: {
+  label?: string;
+  armedLabel?: string;
+  onConfirm: () => void;
+}) {
+  const [armed, setArmed] = useState(false);
+  useEffect(() => {
+    if (!armed) return;
+    const id = setTimeout(() => setArmed(false), 3000);
+    return () => clearTimeout(id);
+  }, [armed]);
+  return (
+    <button
+      onClick={() => {
+        if (armed) onConfirm();
+        else setArmed(true);
+      }}
+      style={{
+        font: 'inherit',
+        fontSize: 12.5,
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 6,
+        color: T.prio,
+        background: armed ? T.prio : T.prioDim,
+        border: '1px solid ' + (armed ? T.prio : 'rgba(245,84,75,.4)'),
+        borderRadius: 9,
+        padding: '7px 12px',
+        transition: 'all .12s',
+        ...(armed ? { color: '#fff', fontWeight: 600 } : null),
+      }}
+    >
+      <TrashGlyph size={12} />
+      {armed ? armedLabel : label}
     </button>
   );
 }

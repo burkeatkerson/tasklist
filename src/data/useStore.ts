@@ -30,6 +30,8 @@ export interface StoreActions {
     flagged?: boolean,
   ) => Promise<void>;
   createProject: (name: string) => Promise<Project | null>;
+  deleteTask: (id: string) => Promise<void>;
+  deleteProject: (id: string) => Promise<void>;
   refresh: () => Promise<void>;
   sweepCompleted: () => Promise<void>;
 }
@@ -288,6 +290,41 @@ export function useStore(): UseStore {
     [],
   );
 
+  const deleteTask = useCallback(
+    (id: string) =>
+      guard(
+        (s) => ({ ...s, tasks: s.tasks.filter((t) => t.id !== id) }),
+        async () => {
+          const { error } = await supabase.from('tasks').delete().eq('id', id);
+          if (error) throw error;
+        },
+      ),
+    [guard],
+  );
+
+  // Deleting a project detaches its tasks (FK `on delete set null`) rather than
+  // destroying them — they fall back to the loose Tasks list.
+  const deleteProject = useCallback(
+    (id: string) =>
+      guard(
+        (s) => ({
+          ...s,
+          projects: s.projects.filter((p) => p.id !== id),
+          tasks: s.tasks.map((t) =>
+            t.projectId === id ? { ...t, projectId: null } : t,
+          ),
+        }),
+        async () => {
+          const { error } = await supabase
+            .from('projects')
+            .delete()
+            .eq('id', id);
+          if (error) throw error;
+        },
+      ),
+    [guard],
+  );
+
   // Permanently delete completed tasks past their TTL. Idempotent; runs on
   // mount and on an interval, and removes them locally for an instant update.
   const sweepCompleted = useCallback(async () => {
@@ -330,6 +367,8 @@ export function useStore(): UseStore {
       detachTask,
       createTask,
       createProject,
+      deleteTask,
+      deleteProject,
       refresh,
       sweepCompleted,
     },

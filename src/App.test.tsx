@@ -17,9 +17,13 @@ const h = vi.hoisted(() => {
   const updateEq = vi.fn(() => Promise.resolve({ error: null }));
   const update = vi.fn(() => ({ eq: updateEq }));
   const insert = vi.fn(() => Promise.resolve({ error: null }));
-  // sweepCompleted: from('tasks').delete().eq('done', true).lt('completed_at', cutoff)
+  // delete().eq('id', id)                         -> deleteTask/deleteProject (awaited)
+  // delete().eq('done', true).lt('completed_at')  -> sweepCompleted
   const deleteLt = vi.fn(() => Promise.resolve({ error: null }));
-  const deleteEq = vi.fn(() => ({ lt: deleteLt }));
+  const deleteEq = vi.fn(() => ({
+    lt: deleteLt,
+    then: (resolve: (v: { error: null }) => void) => resolve({ error: null }),
+  }));
   const del = vi.fn(() => ({ eq: deleteEq }));
   // thenable query builder: select().order().order() resolves to { data, error }
   const selectBuilder = (data: unknown) => {
@@ -93,5 +97,34 @@ describe('App (integration)', () => {
     // project detail shows the attached task and a back link
     await waitFor(() => expect(screen.getByText('Press kit')).toBeInTheDocument());
     expect(screen.getByText('Task Manager')).toBeInTheDocument();
+  });
+
+  it('deletes a loose task only after a two-tap confirm', async () => {
+    render(<App />);
+    await waitFor(() => screen.getByText('Reply to landlord'));
+    fireEvent.click(screen.getByLabelText('task options'));
+    fireEvent.click(screen.getByText('Delete')); // arm
+    // still present until the second tap
+    expect(screen.getByText('Reply to landlord')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Confirm delete')); // confirm
+    await waitFor(() =>
+      expect(screen.queryByText('Reply to landlord')).not.toBeInTheDocument(),
+    );
+  });
+
+  it('deletes a project, detaches its tasks, and returns home', async () => {
+    render(<App />);
+    await waitFor(() => screen.getByText('Launch'));
+    fireEvent.click(screen.getByText('Launch'));
+    await waitFor(() => screen.getByText('Press kit'));
+    fireEvent.click(screen.getByLabelText('project options'));
+    fireEvent.click(screen.getByText('Delete project')); // arm
+    fireEvent.click(screen.getByText('Confirm delete')); // confirm
+    // back on the workspace: project gone, its task fell back to the Tasks list
+    await waitFor(() =>
+      expect(screen.queryByText('Launch')).not.toBeInTheDocument(),
+    );
+    expect(screen.getByText('Press kit')).toBeInTheDocument();
+    expect(screen.getByText('Mobile App')).toBeInTheDocument();
   });
 });

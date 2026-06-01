@@ -22,6 +22,7 @@ const baseProps = {
   onOpen: noop,
   onToggle: noop,
   onFlag: noop,
+  onDelete: noop,
   onDragStart: noop,
   dragOverId: null,
   draggingId: null,

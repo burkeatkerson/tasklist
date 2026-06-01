@@ -101,6 +101,16 @@ export default function App() {
     void actions.detachTask(taskId);
     flash('Moved to Tasks');
   };
+  const deleteTask = (taskId: string) => {
+    void actions.deleteTask(taskId);
+    flash('Task deleted');
+  };
+  const deleteProject = (projectId: string) => {
+    const name = store.projects.find((p) => p.id === projectId)?.name;
+    void actions.deleteProject(projectId);
+    setView({ name: 'home' });
+    flash(name ? 'Deleted · ' + name : 'Project deleted');
+  };
 
   return (
     <div
@@ -154,6 +164,7 @@ export default function App() {
             onOpen={(id) => setView({ name: 'project', id })}
             onToggle={(id) => void actions.toggleTask(id)}
             onFlag={(id) => void actions.toggleFlag(id)}
+            onDelete={deleteTask}
             onDragStart={onDragStart}
             dragOverId={drag?.over ?? null}
             draggingId={drag?.task.id ?? null}
@@ -169,6 +180,8 @@ export default function App() {
             onFlag={(id) => void actions.toggleFlag(id)}
             onAddTask={(title) => addProjectTask(title, project.id, project.name)}
             onDetach={detach}
+            onDeleteTask={deleteTask}
+            onDeleteProject={deleteProject}
           />
         )}
 
