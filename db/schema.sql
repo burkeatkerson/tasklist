@@ -12,16 +12,22 @@ create table if not exists public.projects (
 );
 
 create table if not exists public.tasks (
-  id         uuid primary key default gen_random_uuid(),
-  title      text not null,
-  project_id uuid references public.projects(id) on delete set null,
-  done       boolean not null default false,
-  flagged    boolean not null default false,
-  position   bigint not null default 0,
-  created_at timestamptz not null default now()
+  id           uuid primary key default gen_random_uuid(),
+  title        text not null,
+  project_id   uuid references public.projects(id) on delete set null,
+  done         boolean not null default false,
+  flagged      boolean not null default false,
+  position     bigint not null default 0,
+  created_at   timestamptz not null default now(),
+  completed_at timestamptz
 );
 
+-- additive: bring existing databases up to date when re-run
+alter table public.tasks add column if not exists completed_at timestamptz;
+
 create index if not exists tasks_project_id_idx on public.tasks (project_id);
+create index if not exists tasks_completed_at_idx on public.tasks (completed_at)
+  where done = true;
 
 -- ── row level security ──────────────────────────────────
 -- Shared workspace: anon + authenticated may read/write everything.

@@ -9,12 +9,18 @@ const h = vi.hoisted(() => {
     { id: 'p2', name: 'Mobile App', position: 2, created_at: '' },
   ];
   const tasksData = [
-    { id: 'u1', title: 'Reply to landlord', project_id: null, done: false, flagged: true, position: 1, created_at: '' },
-    { id: 't1', title: 'Press kit', project_id: 'p1', done: false, flagged: false, position: 2, created_at: '' },
+    { id: 'u1', title: 'Reply to landlord', project_id: null, done: false, flagged: true, position: 1, created_at: '', completed_at: null },
+    { id: 't1', title: 'Press kit', project_id: 'p1', done: false, flagged: false, position: 2, created_at: '', completed_at: null },
+    // completed long ago — should be hidden and swept
+    { id: 'old', title: 'Old done thing', project_id: null, done: true, flagged: false, position: 0, created_at: '', completed_at: '2000-01-01T00:00:00Z' },
   ];
   const updateEq = vi.fn(() => Promise.resolve({ error: null }));
   const update = vi.fn(() => ({ eq: updateEq }));
   const insert = vi.fn(() => Promise.resolve({ error: null }));
+  // sweepCompleted: from('tasks').delete().eq('done', true).lt('completed_at', cutoff)
+  const deleteLt = vi.fn(() => Promise.resolve({ error: null }));
+  const deleteEq = vi.fn(() => ({ lt: deleteLt }));
+  const del = vi.fn(() => ({ eq: deleteEq }));
   // thenable query builder: select().order().order() resolves to { data, error }
   const selectBuilder = (data: unknown) => {
     const b: Record<string, unknown> = {
@@ -29,6 +35,7 @@ const h = vi.hoisted(() => {
       select: () => selectBuilder(table === 'projects' ? projectsData : tasksData),
       update,
       insert,
+      delete: del,
     }),
     channel: () => {
       const ch: Record<string, unknown> = {};
@@ -38,7 +45,7 @@ const h = vi.hoisted(() => {
     },
     removeChannel: () => {},
   };
-  return { supabase, update, updateEq, insert };
+  return { supabase, update, updateEq, insert, del };
 });
 
 vi.mock('./lib/supabase', async (orig) => {
@@ -64,8 +71,19 @@ describe('App (integration)', () => {
     const checkbox = row.querySelector('button[aria-label="toggle done"]')!;
     fireEvent.click(checkbox);
     await waitFor(() =>
-      expect(h.update).toHaveBeenCalledWith({ done: true }),
+      expect(h.update).toHaveBeenCalledWith(
+        expect.objectContaining({ done: true, completed_at: expect.any(String) }),
+      ),
     );
+  });
+
+  it('hides expired completed tasks and sweeps them from the database', async () => {
+    render(<App />);
+    await waitFor(() => screen.getByText('Reply to landlord'));
+    // the long-ago-completed task is filtered out of the UI
+    expect(screen.queryByText('Old done thing')).not.toBeInTheDocument();
+    // and the sweep issued a delete
+    await waitFor(() => expect(h.del).toHaveBeenCalled());
   });
 
   it('opens a project detail view', async () => {

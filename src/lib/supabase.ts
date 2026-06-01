@@ -27,6 +27,7 @@ export interface TaskRow {
   flagged: boolean;
   position: number;
   created_at: string;
+  completed_at: string | null;
 }
 
 export const supabase = createClient(url, key, {
@@ -49,4 +50,5 @@ export const toTask = (r: TaskRow): Task => ({
   flagged: r.flagged,
   position: r.position,
   createdAt: r.created_at,
+  completedAt: r.completed_at ?? null,
 });

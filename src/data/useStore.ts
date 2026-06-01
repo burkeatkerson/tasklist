@@ -7,6 +7,7 @@ import {
   type ProjectRow,
   type TaskRow,
 } from '../lib/supabase';
+import { COMPLETED_TTL_MS, SWEEP_INTERVAL_MS } from '../config';
 
 const EMPTY: Store = { projects: [], tasks: [] };
 
@@ -30,6 +31,7 @@ export interface StoreActions {
   ) => Promise<void>;
   createProject: (name: string) => Promise<Project | null>;
   refresh: () => Promise<void>;
+  sweepCompleted: () => Promise<void>;
 }
 
 export interface UseStore {
@@ -144,15 +146,18 @@ export function useStore(): UseStore {
       const cur = ref.current.tasks.find((t) => t.id === id);
       if (!cur) return Promise.resolve();
       const done = !cur.done;
+      const completedAt = done ? new Date().toISOString() : null;
       return guard(
         (s) => ({
           ...s,
-          tasks: s.tasks.map((t) => (t.id === id ? { ...t, done } : t)),
+          tasks: s.tasks.map((t) =>
+            t.id === id ? { ...t, done, completedAt } : t,
+          ),
         }),
         async () => {
           const { error } = await supabase
             .from('tasks')
-            .update({ done })
+            .update({ done, completed_at: completedAt })
             .eq('id', id);
           if (error) throw error;
         },
@@ -235,6 +240,7 @@ export function useStore(): UseStore {
         flagged,
         position,
         createdAt: new Date().toISOString(),
+        completedAt: null,
       };
       return guard(
         (s) => ({ ...s, tasks: [...s.tasks, optimistic] }),
@@ -246,6 +252,7 @@ export function useStore(): UseStore {
             done: false,
             flagged,
             position,
+            completed_at: null,
           });
           if (error) throw error;
         },
@@ -281,6 +288,37 @@ export function useStore(): UseStore {
     [],
   );
 
+  // Permanently delete completed tasks past their TTL. Idempotent; runs on
+  // mount and on an interval, and removes them locally for an instant update.
+  const sweepCompleted = useCallback(async () => {
+    const cutoff = new Date(Date.now() - COMPLETED_TTL_MS).toISOString();
+    const { error } = await supabase
+      .from('tasks')
+      .delete()
+      .eq('done', true)
+      .lt('completed_at', cutoff);
+    if (error) {
+      // Non-fatal: leave them visible; the next sweep retries.
+      console.warn('sweep failed:', messageOf(error));
+      return;
+    }
+    setStore((s) => ({
+      ...s,
+      tasks: s.tasks.filter(
+        (t) =>
+          !(t.done && t.completedAt != null && t.completedAt < cutoff),
+      ),
+    }));
+  }, []);
+
+  // sweep after the first load, then on a timer
+  useEffect(() => {
+    if (loading) return;
+    void sweepCompleted();
+    const id = setInterval(() => void sweepCompleted(), SWEEP_INTERVAL_MS);
+    return () => clearInterval(id);
+  }, [loading, sweepCompleted]);
+
   return {
     store,
     loading,
@@ -293,6 +331,7 @@ export function useStore(): UseStore {
       createTask,
       createProject,
       refresh,
+      sweepCompleted,
     },
   };
 }

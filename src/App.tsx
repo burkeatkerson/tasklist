@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { PointerEvent } from 'react';
-import type { Task } from './types';
+import type { Store, Task } from './types';
+import { isExpiredCompleted } from './types';
 import { T } from './theme';
 import { useStore } from './data/useStore';
 import { Workspace } from './components/Workspace';
@@ -15,6 +16,24 @@ export default function App() {
   const [view, setView] = useState<View>({ name: 'home' });
   const [drag, setDrag] = useState<DragState | null>(null);
   const [toast, setToast] = useState<ToastState | null>(null);
+
+  // Re-render every minute so completed tasks vanish as they cross the TTL,
+  // even with no other activity.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Hide completed tasks that have aged out (the sweep deletes them server-side;
+  // this makes them disappear instantly on the exact boundary).
+  const visibleStore: Store = useMemo(
+    () => ({
+      projects: store.projects,
+      tasks: store.tasks.filter((t) => !isExpiredCompleted(t, now)),
+    }),
+    [store, now],
+  );
 
   const flash = (msg: string) => setToast({ msg, id: nextToastId() });
 
@@ -131,7 +150,7 @@ export default function App() {
           </Centered>
         ) : view.name === 'home' || !project ? (
           <Workspace
-            store={store}
+            store={visibleStore}
             onOpen={(id) => setView({ name: 'project', id })}
             onToggle={(id) => void actions.toggleTask(id)}
             onFlag={(id) => void actions.toggleFlag(id)}
@@ -144,7 +163,7 @@ export default function App() {
         ) : (
           <ProjectView
             project={project}
-            store={store}
+            store={visibleStore}
             onBack={() => setView({ name: 'home' })}
             onToggle={(id) => void actions.toggleTask(id)}
             onFlag={(id) => void actions.toggleFlag(id)}

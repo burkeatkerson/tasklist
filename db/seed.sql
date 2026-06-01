@@ -31,4 +31,7 @@ begin
     ('Reply to landlord',    null,     false, true,  13),
     ('Book dentist',         null,     false, false, 14),
     ('Renew passport',       null,     false, false, 15);
+
+  -- give seeded completed tasks a completion time so they age out like real ones
+  update public.tasks set completed_at = now() where done = true and completed_at is null;
 end $$;

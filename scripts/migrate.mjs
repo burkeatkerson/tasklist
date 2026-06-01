@@ -65,10 +65,22 @@ const client = new pg.Client({
 });
 
 const runSeed = !process.argv.includes('--no-seed');
+const fileFlag = process.argv.indexOf('--file');
+const onlyFile = fileFlag !== -1 ? process.argv[fileFlag + 1] : null;
 
 async function run() {
-  const schema = readFileSync(join(root, 'db', 'schema.sql'), 'utf8');
   await client.connect();
+
+  // Run a single ad-hoc SQL file (e.g. an incremental migration) and stop.
+  if (onlyFile) {
+    const sql = readFileSync(join(root, onlyFile), 'utf8');
+    console.log(`Connected. Applying ${onlyFile}…`);
+    await client.query(sql);
+    console.log(`✓ ${onlyFile} applied`);
+    return;
+  }
+
+  const schema = readFileSync(join(root, 'db', 'schema.sql'), 'utf8');
   console.log('Connected. Applying schema…');
   await client.query(schema);
   console.log('✓ schema applied');

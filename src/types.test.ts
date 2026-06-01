@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { byPriority, type Task } from './types';
+import { byPriority, isExpiredCompleted, type Task } from './types';
+import { COMPLETED_TTL_MS } from './config';
 
 const mk = (over: Partial<Task>): Task => ({
   id: 'x',
@@ -9,6 +10,7 @@ const mk = (over: Partial<Task>): Task => ({
   flagged: false,
   position: 0,
   createdAt: '',
+  completedAt: null,
   ...over,
 });
 
@@ -39,5 +41,31 @@ describe('byPriority', () => {
       'open',
       'done',
     ]);
+  });
+});
+
+describe('isExpiredCompleted', () => {
+  const now = 1_000_000_000_000;
+
+  it('is false for open tasks regardless of timestamp', () => {
+    expect(isExpiredCompleted(mk({ done: false, completedAt: null }), now)).toBe(
+      false,
+    );
+  });
+
+  it('is false for a recently completed task', () => {
+    const completedAt = new Date(now - 1000).toISOString();
+    expect(isExpiredCompleted(mk({ done: true, completedAt }), now)).toBe(false);
+  });
+
+  it('is true once completion is older than the TTL', () => {
+    const completedAt = new Date(now - COMPLETED_TTL_MS - 1).toISOString();
+    expect(isExpiredCompleted(mk({ done: true, completedAt }), now)).toBe(true);
+  });
+
+  it('is false for a completed task missing a timestamp (legacy)', () => {
+    expect(isExpiredCompleted(mk({ done: true, completedAt: null }), now)).toBe(
+      false,
+    );
   });
 });

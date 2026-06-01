@@ -9,10 +9,10 @@ const store: Store = {
     { id: 'p2', name: 'Mobile App', position: 2, createdAt: '' },
   ],
   tasks: [
-    { id: 't1', title: 'Press kit', projectId: 'p1', done: false, flagged: false, position: 1, createdAt: '' },
-    { id: 't2', title: 'Ship it', projectId: 'p1', done: true, flagged: false, position: 2, createdAt: '' },
-    { id: 'u1', title: 'Reply to landlord', projectId: null, done: false, flagged: true, position: 3, createdAt: '' },
-    { id: 'u2', title: 'Book dentist', projectId: null, done: false, flagged: false, position: 4, createdAt: '' },
+    { id: 't1', title: 'Press kit', projectId: 'p1', done: false, flagged: false, position: 1, createdAt: '', completedAt: null },
+    { id: 't2', title: 'Ship it', projectId: 'p1', done: true, flagged: false, position: 2, createdAt: '', completedAt: '2026-06-01T00:00:00Z' },
+    { id: 'u1', title: 'Reply to landlord', projectId: null, done: false, flagged: true, position: 3, createdAt: '', completedAt: null },
+    { id: 'u2', title: 'Book dentist', projectId: null, done: false, flagged: false, position: 4, createdAt: '', completedAt: null },
   ],
 };
 
