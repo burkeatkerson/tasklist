@@ -4,8 +4,10 @@ import type { Store, Task } from './types';
 import { isExpiredCompleted } from './types';
 import { T } from './theme';
 import { useStore } from './data/useStore';
+import { useMediaQuery } from './hooks/useMediaQuery';
 import { Workspace } from './components/Workspace';
 import { ProjectView } from './components/ProjectView';
+import { DesktopShell, type Selected } from './components/DesktopShell';
 import { DragGhost, type DragState } from './components/DragGhost';
 import { Toast, type ToastState } from './components/Toast';
 
@@ -13,7 +15,9 @@ type View = { name: 'home' } | { name: 'project'; id: string };
 
 export default function App() {
   const { store, loading, error, actions } = useStore();
+  const wide = useMediaQuery('(min-width: 880px)');
   const [view, setView] = useState<View>({ name: 'home' });
+  const [selected, setSelected] = useState<Selected>({ type: 'tasks' });
   const [drag, setDrag] = useState<DragState | null>(null);
   const [toast, setToast] = useState<ToastState | null>(null);
 
@@ -93,6 +97,13 @@ export default function App() {
     void actions.createTask(title, projectId);
     flash('Added to ' + name);
   };
+  const addTaskDesktop = (
+    title: string,
+    proj: { id: string; name: string } | null,
+  ) => {
+    if (proj) addProjectTask(title, proj.id, proj.name);
+    else addLooseTask(title);
+  };
   const addProject = async (name: string) => {
     const p = await actions.createProject(name);
     if (p) flash('Project created · ' + name);
@@ -112,12 +123,16 @@ export default function App() {
     flash(name ? 'Deleted · ' + name : 'Project deleted');
   };
 
-  return (
-    <div className="app-bg">
-      <div className="app-frame">
+  const errored =
+    error && store.projects.length === 0 && store.tasks.length === 0;
+
+  let body: React.ReactNode;
+  if (loading || errored) {
+    body = (
+      <div className="app-bg">
         {loading ? (
           <Centered>Loading…</Centered>
-        ) : error && store.projects.length === 0 && store.tasks.length === 0 ? (
+        ) : (
           <Centered>
             <div style={{ color: T.prio, fontWeight: 600, marginBottom: 8 }}>
               Couldn’t reach Supabase
@@ -141,38 +156,68 @@ export default function App() {
               Retry
             </button>
           </Centered>
-        ) : view.name === 'home' || !project ? (
-          <Workspace
-            store={visibleStore}
-            onOpen={(id) => setView({ name: 'project', id })}
-            onToggle={(id) => void actions.toggleTask(id)}
-            onFlag={(id) => void actions.toggleFlag(id)}
-            onDelete={deleteTask}
-            onDragStart={onDragStart}
-            dragOverId={drag?.over ?? null}
-            draggingId={drag?.task.id ?? null}
-            onAddTask={addLooseTask}
-            onAddProject={addProject}
-          />
-        ) : (
-          <ProjectView
-            project={project}
-            store={visibleStore}
-            onBack={() => setView({ name: 'home' })}
-            onToggle={(id) => void actions.toggleTask(id)}
-            onFlag={(id) => void actions.toggleFlag(id)}
-            onAddTask={(title) => addProjectTask(title, project.id, project.name)}
-            onDetach={detach}
-            onDeleteTask={deleteTask}
-            onDeleteProject={deleteProject}
-          />
         )}
-
-        <Toast toast={toast} />
       </div>
+    );
+  } else if (wide) {
+    body = (
+      <DesktopShell
+        store={visibleStore}
+        selected={selected}
+        onSelect={setSelected}
+        onToggle={(id) => void actions.toggleTask(id)}
+        onFlag={(id) => void actions.toggleFlag(id)}
+        onDetach={detach}
+        onDeleteTask={deleteTask}
+        onDeleteProject={deleteProject}
+        onAddTask={addTaskDesktop}
+        onAddProject={addProject}
+        onDragStart={onDragStart}
+        dragOverId={drag?.over ?? null}
+        draggingId={drag?.task.id ?? null}
+      />
+    );
+  } else {
+    body = (
+      <div className="app-bg">
+        <div className="app-frame">
+          {view.name === 'home' || !project ? (
+            <Workspace
+              store={visibleStore}
+              onOpen={(id) => setView({ name: 'project', id })}
+              onToggle={(id) => void actions.toggleTask(id)}
+              onFlag={(id) => void actions.toggleFlag(id)}
+              onDelete={deleteTask}
+              onDragStart={onDragStart}
+              dragOverId={drag?.over ?? null}
+              draggingId={drag?.task.id ?? null}
+              onAddTask={addLooseTask}
+              onAddProject={addProject}
+            />
+          ) : (
+            <ProjectView
+              project={project}
+              store={visibleStore}
+              onBack={() => setView({ name: 'home' })}
+              onToggle={(id) => void actions.toggleTask(id)}
+              onFlag={(id) => void actions.toggleFlag(id)}
+              onAddTask={(title) => addProjectTask(title, project.id, project.name)}
+              onDetach={detach}
+              onDeleteTask={deleteTask}
+              onDeleteProject={deleteProject}
+            />
+          )}
+        </div>
+      </div>
+    );
+  }
 
+  return (
+    <>
+      {body}
+      <Toast toast={toast} />
       <DragGhost drag={drag} />
-    </div>
+    </>
   );
 }
 
