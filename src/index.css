@@ -1,0 +1,94 @@
+:root {
+  --acc: #7dd3fc;
+  --acc-dim: rgba(125, 211, 252, 0.16);
+  --acc-ink: #06283a;
+
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: #0c0c0e;
+  color: #f4f4f5;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  min-height: 100%;
+}
+
+/* Hide scrollbars but keep scrolling — matches the prototype's clean look */
+::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+* {
+  scrollbar-width: none;
+}
+
+input,
+button {
+  font-family: inherit;
+}
+
+.pm-input::placeholder {
+  color: rgba(244, 244, 245, 0.3);
+}
+
+/* sheet + scrim + toast + fab animations (from prototype) */
+.pm-sheet {
+  animation: pmUp 0.26s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.pm-scrim {
+  animation: pmFade 0.26s ease;
+}
+@keyframes pmUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+@keyframes pmFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.pm-fab {
+  transition: transform 0.12s, box-shadow 0.12s;
+}
+.pm-fab:active {
+  transform: scale(0.92);
+}
+.pm-toast {
+  animation: pmToast 2.4s ease forwards;
+}
+@keyframes pmToast {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  12%,
+  80% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+}

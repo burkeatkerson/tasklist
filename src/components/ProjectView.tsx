@@ -1,0 +1,212 @@
+import { useState } from 'react';
+import type { Project, Store } from '../types';
+import { byPriority } from '../types';
+import { T } from '../theme';
+import { Check, Flag, FlagGlyph, Progress } from './atoms';
+import { InlineComposer } from './InlineComposer';
+
+export function ProjectView({
+  project,
+  store,
+  onBack,
+  onToggle,
+  onFlag,
+  onAddTask,
+  onDetach,
+}: {
+  project: Project;
+  store: Store;
+  onBack: () => void;
+  onToggle: (id: string) => void;
+  onFlag: (id: string) => void;
+  onAddTask: (title: string) => void;
+  onDetach: (id: string) => void;
+}) {
+  const mine = store.tasks.filter((t) => t.projectId === project.id);
+  const done = mine.filter((t) => t.done).length;
+  const open = mine.filter((t) => !t.done).slice().sort(byPriority);
+  const complete = mine.filter((t) => t.done);
+  const pct = mine.length ? Math.round((done / mine.length) * 100) : 0;
+
+  return (
+    <div style={{ padding: '6px 20px 120px' }}>
+      <button
+        onClick={onBack}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 4,
+          background: 'none',
+          border: 'none',
+          color: T.mut,
+          font: 'inherit',
+          fontSize: 14,
+          cursor: 'pointer',
+          padding: '6px 0 14px',
+          marginLeft: -2,
+        }}
+      >
+        <svg width="8" height="13" viewBox="0 0 8 13">
+          <path
+            d="M7 1L1 6.5 7 12"
+            stroke={T.mut}
+            strokeWidth="1.8"
+            fill="none"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+        Task Manager
+      </button>
+
+      <div style={{ fontSize: 28, fontWeight: 600, letterSpacing: '-.02em' }}>
+        {project.name}
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 14 }}>
+        <div style={{ flex: 1 }}>
+          <Progress done={done} total={mine.length} />
+        </div>
+        <span style={{ fontSize: 13, color: T.mut, fontWeight: 500 }}>{pct}%</span>
+      </div>
+      <div style={{ fontSize: 12.5, color: T.faint, marginTop: 8 }}>
+        {open.length} open · {done} done
+      </div>
+
+      <div style={{ marginTop: 26 }}>
+        {open.map((t, i) => (
+          <TaskLine
+            key={t.id}
+            task={t}
+            onToggle={onToggle}
+            onFlag={onFlag}
+            onDetach={onDetach}
+            last={i === open.length - 1 && complete.length === 0}
+          />
+        ))}
+        {complete.length > 0 && (
+          <div
+            style={{
+              fontSize: 12,
+              fontWeight: 600,
+              letterSpacing: '.04em',
+              color: T.faint,
+              margin: '22px 0 4px',
+            }}
+          >
+            COMPLETED
+          </div>
+        )}
+        {complete.map((t, i) => (
+          <TaskLine
+            key={t.id}
+            task={t}
+            onToggle={onToggle}
+            onFlag={onFlag}
+            onDetach={onDetach}
+            last={i === complete.length - 1}
+          />
+        ))}
+      </div>
+
+      <div style={{ marginTop: 6 }}>
+        <InlineComposer placeholder="Add a task…" onCreate={onAddTask} />
+      </div>
+    </div>
+  );
+}
+
+function TaskLine({
+  task,
+  onToggle,
+  onFlag,
+  onDetach,
+  last,
+}: {
+  task: import('../types').Task;
+  onToggle: (id: string) => void;
+  onFlag: (id: string) => void;
+  onDetach: (id: string) => void;
+  last?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{ borderBottom: last ? 'none' : '1px solid ' + T.lineSoft }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 2px' }}>
+        <Check done={task.done} onClick={() => onToggle(task.id)} big />
+        <span
+          onClick={() => setOpen((o) => !o)}
+          style={{
+            flex: 1,
+            fontSize: 15,
+            cursor: 'pointer',
+            color: task.done ? T.faint : T.ink,
+            textDecoration: task.done ? 'line-through' : 'none',
+          }}
+        >
+          {task.title}
+        </span>
+        <Flag on={task.flagged} onClick={() => onFlag(task.id)} size={15} />
+        <button
+          onClick={() => setOpen((o) => !o)}
+          aria-label="task options"
+          style={{
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            color: T.faint,
+            padding: 4,
+            display: 'flex',
+          }}
+        >
+          <svg width="15" height="15" viewBox="0 0 15 15" fill="currentColor">
+            <circle cx="2.2" cy="7.5" r="1.4" />
+            <circle cx="7.5" cy="7.5" r="1.4" />
+            <circle cx="12.8" cy="7.5" r="1.4" />
+          </svg>
+        </button>
+      </div>
+      {open && (
+        <div style={{ padding: '0 2px 13px 35px', display: 'flex', gap: 8 }}>
+          <button
+            onClick={() => onFlag(task.id)}
+            style={{
+              font: 'inherit',
+              fontSize: 12.5,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              color: task.flagged ? T.prio : T.mut,
+              background: task.flagged ? T.prioDim : T.surf2,
+              border:
+                '1px solid ' + (task.flagged ? 'rgba(245,84,75,.4)' : T.line),
+              borderRadius: 9,
+              padding: '7px 12px',
+            }}
+          >
+            <FlagGlyph on={task.flagged} size={12} />
+            {task.flagged ? 'Priority' : 'Flag priority'}
+          </button>
+          <button
+            onClick={() => {
+              onDetach(task.id);
+              setOpen(false);
+            }}
+            style={{
+              font: 'inherit',
+              fontSize: 12.5,
+              cursor: 'pointer',
+              color: T.mut,
+              background: T.surf2,
+              border: '1px solid ' + T.line,
+              borderRadius: 9,
+              padding: '7px 12px',
+            }}
+          >
+            Detach
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
